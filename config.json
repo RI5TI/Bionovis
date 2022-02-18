@@ -1,0 +1,12 @@
+{
+    "db_host": "localhost",
+    "db_port": "1433",
+    "db_name": "bionovis",
+    "db_user": "sa",
+    "db_pass": "#R1st1**",
+    "tag": "SL01",
+    "win_width": "0",
+    "win_height": "0",
+    "win_frame": false,
+    "win_kiosk": true
+}
