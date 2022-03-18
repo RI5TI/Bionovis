@@ -21,7 +21,7 @@
                     <div class="tag-name"><strong>TAG:</strong> {{ currentData.tag }}</div>
                     <div v-for="(channel, k) in currentData.channels" v-bind:key="k" class="value-row">
                         <div class="magnitude">{{ channel.magnitude }}</div>
-                        <div v-bind:class="['value', {'green': channel.light == 1, 'yellow': channel.light == 2, 'red': channel.light == 3}]">{{ channel.value }}</div>
+                        <div v-bind:class="['value', {'green': channel.light == 1, 'yellow': channel.light == 2, 'red': channel.light == 3}]">{{ formatValue(channel.value, channel.magnitude) }}</div>
                     </div>
                     <div class="date">{{ maxDate }}</div>
                 </div>
@@ -31,7 +31,7 @@
                         <div class="tag-name"><strong>TAG:</strong> {{ channel.name }}</div>
                         <div class="value-row">
                             <div class="magnitude">{{ channel.magnitude }}</div>
-                            <div v-bind:class="['value', {'green': channel.light == 1, 'yellow': channel.light == 2, 'red': channel.light == 3}]">{{ channel.value }}</div>
+                            <div v-bind:class="['value', {'green': channel.light == 1, 'yellow': channel.light == 2, 'red': channel.light == 3}]">{{ formatValue(channel.value, channel.magnitude) }}</div>
                         </div>
                         <div class="date">{{ formatDate(channel.date) }}</div>
                     </div>
@@ -179,6 +179,50 @@ export default {
                 message,
                 type
             })
+        },
+        formatValue: function (value, magnitude) {
+            let complement = ''
+            switch (magnitude) {
+                case 'T':
+                    complement = '°C'
+                    break;
+                case 'P':
+                    complement = 'Pa'
+                    break;
+                case 'U':
+                    complement = 'Um'
+                    break;
+            }
+            return this.numberFormat(value, 2, ',', '') + ' ' + complement
+        },
+        numberFormat: function(number, decimals, dec_point, thousands_point) {
+
+            if (number == null || !isFinite(number)) {
+                throw new TypeError("number is not valid");
+            }
+
+            if (!decimals) {
+                var len = number.toString().split('.').length;
+                decimals = len > 1 ? len : 0;
+            }
+
+            if (!dec_point) {
+                dec_point = '.';
+            }
+
+            if (!thousands_point) {
+                thousands_point = ',';
+            }
+
+            number = parseFloat(number).toFixed(decimals);
+
+            number = number.replace(".", dec_point);
+
+            var splitNum = number.split(dec_point);
+            splitNum[0] = splitNum[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousands_point);
+            number = splitNum.join(dec_point);
+
+            return number;
         },
         consoleLog: function (message) {
             const currDate = this.$moment().format('DD/MM/YYYY HH:mm')
