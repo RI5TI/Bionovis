@@ -287,8 +287,8 @@ app.whenReady().then(() => {
 
     const configWidth = parseInt(config.win_width)
     const configHeight = parseInt(config.win_height)
-    const configFrame = config.win_frame || false
-    const configKiosk = config.win_kiosk || true
+    const configFrame = config.win_frame === true || false
+    const configKiosk = config.win_kiosk === true || false
 
     const { screen } = require('electron')
 
