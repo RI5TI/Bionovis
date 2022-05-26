@@ -14,7 +14,7 @@ if(isMac) {
 
 let config = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'config.json')));
 
-const dbOptions = {
+let dbOptions = {
     server: config.db_host,
     authentication: {
         type: 'default',
@@ -24,10 +24,18 @@ const dbOptions = {
         }
     },
     options: {
-        database: config.db_name,
-        port: parseInt(config.db_port)
+        database: config.db_name
     }
 };
+
+if (config.db_port) {
+    dbOptions['options']['port'] = parseInt(config.db_port)
+}
+
+if (config.db_instance) {
+    dbOptions['options']['instanceName'] = config.db_instance
+}
+
 const TYPES = require('tedious').TYPES;
 
 let request = null;
@@ -77,13 +85,14 @@ function formatData(rows) {
         let channelData = {
             name: row.NomeCanal,
             date: moment(row.datetime).format('YYYY-MM-DD HH:mm:00'),
-            value: row.value.replace('.', '').replace(',', '.'),
+            value: row.value,
             magnitude: row.Regra_Grandeza,
-            light: row.Farol
+            light: row.Farol,
+            lightColor: row.Cor_Farol
         };
 
-        if ( ! data.tag) {
-            data.tag = row.TAG;
+        if ( ! data.room) {
+            data.room = row.Salas;
             data.channels = [channelData];
         } else {
             data.channels.push(channelData);
@@ -147,13 +156,13 @@ function dbConnect(ws) {
     
         printMessage('Setting up DB request.');
 
-        request = new Request(`SELECT * FROM ODS_TAB_TABLET WHERE TAG = @Tag ORDER BY NomeCanal ASC`, function (err) {
+        request = new Request(`SELECT * FROM ODS_TAB_TABLET WHERE Salas = @Room ORDER BY NomeCanal ASC`, function (err) {
             if (err) {
                 console.log('Error while creating DB request ' + err.toString());
             }
         });
 
-        request.addParameter('Tag', TYPES.NVarChar, ws.tag);
+        request.addParameter('Room', TYPES.NVarChar, ws.room);
     
         request.on('row', function(columns) { 
     
@@ -201,9 +210,9 @@ function onMessage(ws, data) {
     const dataJson = JSON.parse(data.toString());
 
     switch (dataJson.type) {
-        case 'tagReceived':
+        case 'roomReceived':
             
-            printMessage(`Connection successfully associated to TAG ${ws.tag}.`);
+            printMessage(`Connection successfully associated to ROOM ${ws.room}.`);
 
             dbConnect(ws)
 
@@ -219,7 +228,7 @@ function onConnection(ws, req) {
 
     conn = ws;
 
-    ws.tag = config.tag;
+    ws.room = config.sala;
 
     ws.on('message', data => onMessage(ws, data));
     
@@ -238,13 +247,13 @@ function onConnection(ws, req) {
     
     printMessage(`New connection accepted.`);
 
-    if (ws.tag.length) {
+    if (ws.room.length) {
         ws.send(JSON.stringify({
-            type: 'tag',
-            data: ws.tag
+            type: 'room',
+            data: ws.room
         }))
     } else {
-        printMessage("No tag was set at config.json file...")
+        printMessage("No room was set at config.json file...")
     }
 
 }

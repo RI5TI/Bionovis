@@ -18,20 +18,24 @@
             <div v-if="currentData">
 
                 <div class="tag-overview">
-                    <div class="tag-name"><strong>TAG:</strong> {{ currentData.tag }}</div>
+                    <div class="tag-name">{{ currentData.room }}</div>
                     <div v-for="(channel, k) in currentData.channels" v-bind:key="k" class="value-row">
-                        <div class="magnitude">{{ channel.magnitude }}</div>
-                        <div v-bind:class="['value', {'green': channel.light == 1, 'yellow': channel.light == 2, 'red': channel.light == 3}]">{{ formatValue(channel.value, channel.magnitude) }}</div>
+                        <div class="magnitude">{{ channel.magnitude }}<span class="magnitude-count">{{getMagnitudeNumber(channel.magnitude, k)}}</span></div>
+                        <div 
+                            class="value" 
+                            :style="{'background-color': channel.lightColor}">{{ formatValue(channel.value, channel.magnitude) }}</div>
                     </div>
                     <div class="date">{{ maxDate }}</div>
                 </div>
 
                 <div class="channel-overview">
                     <div v-for="(channel, k) in currentData.channels" v-bind:key="k">
-                        <div class="tag-name"><strong>TAG:</strong> {{ channel.name }}</div>
+                        <div class="tag-name">{{ channel.name }}</div>
                         <div class="value-row">
                             <div class="magnitude">{{ channel.magnitude }}</div>
-                            <div v-bind:class="['value', {'green': channel.light == 1, 'yellow': channel.light == 2, 'red': channel.light == 3}]">{{ formatValue(channel.value, channel.magnitude) }}</div>
+                            <div 
+                                class="value"
+                                :style="{'background-color': channel.lightColor}">{{ formatValue(channel.value, channel.magnitude) }}</div>
                         </div>
                         <div class="date">{{ formatDate(channel.date) }}</div>
                     </div>
@@ -108,6 +112,15 @@ export default {
         this.connect()
     },
     methods: {
+        getMagnitudeNumber(magnitude, key) {
+            let magnitudeCount = 0;
+            this.currentData.channels.map((channel) => {
+                if (channel.magnitude == magnitude) {
+                    magnitudeCount = magnitudeCount + 1
+                }
+            })
+            return magnitudeCount > 1 ? key + 1 : ''
+        },
         formatDate(date) {
             return this.$moment(date).format('DD/MM/YYYY HH:mm');
         },
@@ -153,9 +166,9 @@ export default {
                 }
                 this.socket.onmessage = (event) => {
                     const message = JSON.parse(event.data)
-                    if (message.type == 'tag') {
+                    if (message.type == 'room') {
                         this.socket.send(JSON.stringify({
-                            type: 'tagReceived'
+                            type: 'roomReceived'
                         }))
                     } else if (message.type == 'data') {
                         this.currentData = message.data
@@ -181,48 +194,54 @@ export default {
             })
         },
         formatValue: function (value, magnitude) {
-            let complement = ''
-            switch (magnitude) {
-                case 'T':
-                    complement = '°C'
-                    break;
-                case 'P':
-                    complement = 'Pa'
-                    break;
-                case 'U':
-                    complement = 'Um'
-                    break;
-            }
-            return this.numberFormat(value, 2, ',', '') + ' ' + complement
+            return value
+            // let complement = ''
+            // switch (magnitude) {
+            //     case 'T':
+            //         complement = '°C'
+            //         break;
+            //     case 'P':
+            //         complement = 'Pa'
+            //         break;
+            //     case 'U':
+            //         complement = 'Um'
+            //         break;
+            // }
+            // return this.numberFormat(value, 1, ',', '') + ' ' + complement
         },
-        numberFormat: function(number, decimals, dec_point, thousands_point) {
+        numberFormat (number, decimals, decPoint, thousandsSep) { 
 
-            if (number == null || !isFinite(number)) {
-                throw new TypeError("number is not valid");
+            number = (number + '').replace(/[^0-9+\-Ee.]/g, '')
+            const n = !isFinite(+number) ? 0 : +number
+            const prec = !isFinite(+decimals) ? 0 : Math.abs(decimals)
+            const sep = (typeof thousandsSep === 'undefined') ? ',' : thousandsSep
+            const dec = (typeof decPoint === 'undefined') ? '.' : decPoint
+            let s = ''
+
+            const toFixedFix = function (n, prec) {
+                if (('' + n).indexOf('e') === -1) {
+                return +(Math.round(n + 'e+' + prec) + 'e-' + prec)
+                } else {
+                const arr = ('' + n).split('e')
+                let sig = ''
+                if (+arr[1] + prec > 0) {
+                    sig = '+'
+                }
+                return (+(Math.round(+arr[0] + 'e' + sig + (+arr[1] + prec)) + 'e-' + prec)).toFixed(prec)
+                }
             }
 
-            if (!decimals) {
-                var len = number.toString().split('.').length;
-                decimals = len > 1 ? len : 0;
+            // @todo: for IE parseFloat(0.55).toFixed(0) = 0;
+            s = (prec ? toFixedFix(n, prec).toString() : '' + Math.round(n)).split('.')
+            if (s[0].length > 3) {
+                s[0] = s[0].replace(/\B(?=(?:\d{3})+(?!\d))/g, sep)
+            }
+            if ((s[1] || '').length < prec) {
+                s[1] = s[1] || ''
+                s[1] += new Array(prec - s[1].length + 1).join('0')
             }
 
-            if (!dec_point) {
-                dec_point = '.';
-            }
-
-            if (!thousands_point) {
-                thousands_point = ',';
-            }
-
-            number = parseFloat(number).toFixed(decimals);
-
-            number = number.replace(".", dec_point);
-
-            var splitNum = number.split(dec_point);
-            splitNum[0] = splitNum[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousands_point);
-            number = splitNum.join(dec_point);
-
-            return number;
+            return s.join(dec)
         },
         consoleLog: function (message) {
             const currDate = this.$moment().format('DD/MM/YYYY HH:mm')
@@ -370,5 +389,9 @@ body {
     background-position: center;
     position: absolute;
     left: 0;
+}
+
+.magnitude-count {
+    font-size: 10px;
 }
 </style>
