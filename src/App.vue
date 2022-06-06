@@ -104,7 +104,9 @@ export default {
         },
         channelColumns() {
 
-            const { channels } = this.currentData
+            const channels = this.currentData.channels.map((channel) => {
+                return Object.assign({}, channel)
+            })
             return this.splitToChunks(channels, Math.ceil(channels.length/4))
 
         }
