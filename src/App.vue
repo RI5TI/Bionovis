@@ -28,8 +28,8 @@
                     <div class="date">{{ maxDate }}</div>
                 </div>
 
-                <div class="channel-overview">
-                    <div v-for="(channel, k) in currentData.channels" v-bind:key="k">
+                <div class="channel-overview" v-for="(column, columnKey) in channelColumns" :key="columnKey">
+                    <div v-for="(channel, k) in column" :key="k">
                         <div class="tag-name">{{ channel.name }}</div>
                         <div class="value-row">
                             <div class="magnitude">{{ channel.magnitude }}</div>
@@ -101,6 +101,12 @@ export default {
                 }
             });
             return maxDate.format('DD/MM/YYYY HH:mm')
+        },
+        channelColumns() {
+
+            const { channels } = this.currentData
+            return this.splitToChunks(channels, Math.ceil(channels.length/4))
+
         }
     },
     mounted: function () {
@@ -112,6 +118,13 @@ export default {
         this.connect()
     },
     methods: {
+        splitToChunks(array, parts) {
+            let result = [];
+            for (let i = parts; i > 0; i--) {
+                result.push(array.splice(0, Math.ceil(array.length / i)));
+            }
+            return result;
+        },
         getMagnitudeNumber(magnitude, key) {
             let magnitudeCount = 0;
             this.currentData.channels.map((channel) => {
@@ -269,6 +282,10 @@ body {
     background-color: #f9f9f9;
 }
 
+.container {
+    width: 100% !important;
+}
+
 .terminal-wrapper {
     display: flex;
     width: 100%;
@@ -321,6 +338,7 @@ body {
 
 .tag-name {
     padding: 10px;
+    text-align: center;
 }
 
 .magnitude {
